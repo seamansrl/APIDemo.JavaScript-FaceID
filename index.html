@@ -1,0 +1,145 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Demo Proyecto Horus</title>
+	<style type="text/css">
+		body { font-family: Helvetica, sans-serif; }
+		#results { float:center; margin:20px; padding:20px; border:1px solid; background:#EEE; }
+	</style>
+</head>
+
+<body>
+	<h1>Proyecto Horus (FaceID demo)</h1>
+	<div id="my_camera"></div>
+	<div id="results">Detection</div>
+
+	<script type="text/javascript" src="webcam.js"></script>
+	<script language="JavaScript">
+		var server = 'https://server1.proyectohorus.com.ar';
+		var user = 'admin';
+		var password = 'horusweb331';
+		var profileuuid = 'df3ccfe446a211eabf2600155d043c0c';
+		var token = "";
+		var instance = "";
+
+		// PARAMETRIZA LA CAPTURA
+		Webcam.set(
+			{
+			width: 640,
+			height: 480,
+			image_format: 'jpeg',
+			jpeg_quality: 70
+			});
+		Webcam.attach( '#my_camera' );
+
+		// CONVIERTE LA IMAGEN DE BASE64 A BYTE
+		function base64toBlob(base64Data, contentType) 
+		{
+			contentType = contentType || '';
+			var sliceSize = 1024;
+			var byteCharacters = atob(base64Data);
+			var bytesLength = byteCharacters.length;
+			var slicesCount = Math.ceil(bytesLength / sliceSize);
+			var byteArrays = new Array(slicesCount);
+
+			for (var sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) 
+			{
+				var begin = sliceIndex * sliceSize;
+				var end = Math.min(begin + sliceSize, bytesLength);
+
+				var bytes = new Array(end - begin);
+				for (var offset = begin, i = 0; offset < end; ++i, ++offset) 
+				{
+					bytes[i] = byteCharacters[offset].charCodeAt(0);
+				}
+				byteArrays[sliceIndex] = new Uint8Array(bytes);
+			}
+			return new Blob(byteArrays, { type: contentType });
+		}
+
+		// OBTIENE EL TOKEN
+		function getToken()
+		{
+			var form = new FormData();
+			form.append('user', user);
+			form.append('password', password);
+			form.append('profileuuid', profileuuid);
+
+			var GetToken = new XMLHttpRequest();
+			
+			GetToken.open('POST', server + '/api/v2/functions/login?responseformat=json', true);
+
+			GetToken.onload = function () 
+			{
+				if (GetToken.status == 200) 
+				{
+					var data = JSON.parse(this.response);
+
+					token = data.token;
+					instance = data.instance;
+				}
+			};
+
+			GetToken.send(form);
+		}
+
+		// LLAMO AL ENDPOINT DE CODEBAR DECODER PARA OBTENER LOS DATOS DE UN QR O CODIGO DE BARRAS
+		function Recognition()
+		{
+			Webcam.snap( function(data_uri) 
+			{
+				var request = new XMLHttpRequest();
+
+				request.open('POST', server + '/api/v2/functions/face/id?responseformat=json', true);
+				request.setRequestHeader('Authorization', 'Bearer ' +  token);
+				request.setRequestHeader('Content-Type', 'image/jpeg');
+
+				request.onload = function () 
+				{
+					if (request.status == 200) 
+					{
+						var data = JSON.parse(this.response);
+
+						var request1 = new XMLHttpRequest();
+
+						request1.open('GET', server + '/api/v2/admin/accounts/users/profiles/detections=' + data.id + '/value?responseformat=json', true);
+						request1.setRequestHeader('Authorization', 'Bearer ' +  token);
+
+						request1.onload = function () 
+						{
+							if (request1.status == 200) 
+							{
+								var data1 = JSON.parse(this.response);
+
+								document.getElementById('results').innerHTML = data1.value;
+							}
+						};
+
+						request1.send();
+					}
+				};
+
+				var parts = data_uri.split(";base64,");
+				var contentType = parts[0].replace("data:", "");
+				var base64 = parts[1];
+
+				request.send(base64toBlob(base64,"image/jpeg"));
+			}
+	    	);
+		}
+
+		// INICIA LA EL RECONOCIMIENTO
+		function start()
+		{
+			getToken();
+			setInterval(Recognition, 1000);
+		}
+
+		// DEMORA 5 SEGUNDOS EL INICIO PARA ESPERAR A QUE INICIE LA CAMARA
+		setTimeout(start,5000);
+	</script>
+	
+</body>
+</html>
