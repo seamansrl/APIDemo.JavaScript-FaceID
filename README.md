@@ -3,7 +3,7 @@ Código demo en JavaScript para el consumo de la API de reconocimiento (Proyecto
 
 # Instalación:
 
-Para usar esta demo se requiere subir a un servidor HTML tipo IIS o APACHE con certiuficados SSL para ser conectado via HTTPS caso contrario el browser no dara acceso a la camara
+Para usar esta demo se requiere subir a un servidor HTML tipo IIS o APACHE con certificados SSL para ser conectado via HTTPS caso contrario el browser no dara acceso a la camara
 
 # Dentro de las funciones de la API podemos encontrar:
 
